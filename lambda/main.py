@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-
+from benchmark import benchmark
 from llm import BedrockLLM
 from ocr import AWSRekognitionOCR
 from doc import FormDoc
@@ -15,7 +15,8 @@ DIR = os.path.dirname(os.path.realpath(__file__))
 # FORM_PATH = os.path.join(DIR, "../docs/alta_autonomos.pdf")
 FORM_PATH = os.path.join(DIR, "../docs/consulta_de_fondos.pdf")
 PIC_PATH = os.path.join(DIR, "../docs/dni.jpg")
-
+OPT_PATH = os.path.join(DIR, "../docs/optimalOutput.json")
+BENCH_PATH = os.path.join(DIR, "../docs/benchmark.xlsx")
 load_dotenv()
 
 aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
@@ -71,13 +72,16 @@ llm = BedrockLLM(
 
 json_response = llm.send_prompt(prompt)
 
-formDoc.set_fields_to_fill(json_response)
+EditedFields = formDoc.set_fields_to_fill(json_response) #Como he visto que aqui tienes parte del processing del Json que te devuelve el LLM he pillado solo los cambios que se aplican a partir de la respuesta del llm
+
+benchmark.optimal(fields_to_fill, EditedFields, OPT_PATH, BENCH_PATH)
+
 
 # Create output directory if needed
 output_dir = os.path.join(DIR, "../docs")
 os.makedirs(output_dir, exist_ok=True)
 
 # Save the filled PDF
-output_path = os.path.join(output_dir, "consulta_de_fondos_filled.pdf")
+output_path = os.path.join(output_dir, "consulta_de_fondos_filledTEST.pdf")
 formDoc.save(output_path)
 print(f"\nSuccessfully saved filled form to:\n{os.path.abspath(output_path)}")

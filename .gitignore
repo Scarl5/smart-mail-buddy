@@ -3,3 +3,4 @@
 .build
 cdk.out
 dist
+__pycache__

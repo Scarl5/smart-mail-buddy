@@ -32,6 +32,8 @@ class FormDoc(AbstractDoc):
         return fields_to_fill
 
     def set_fields_to_fill(self, fields_to_fill: Dict[str, Any]) -> None:
+        filled_fields = {}  # List to track successfully filled fields
+
         for page in self.document:
             for field in page.widgets():
                 if field.field_type == pymupdf.PDF_WIDGET_TYPE_TEXT:  # type: ignore
@@ -40,5 +42,9 @@ class FormDoc(AbstractDoc):
                         try:
                             field.field_value = fields_to_fill[field_name]
                             field.update()  # Important to update the field appearance
+                            filled_fields[field_name] = fields_to_fill[field_name]  # Add to the dictionary of filled fields
+
                         except Exception as e:
                             print(f"Error updating field {field_name}: {e}")
+        return filled_fields
+
