@@ -4,3 +4,5 @@
 cdk.out
 dist
 __pycache__
+lambda/import json.py
+lambda/main copy.py
