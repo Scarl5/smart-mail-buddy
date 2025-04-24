@@ -2,9 +2,8 @@ import os
 
 from dotenv import load_dotenv
 from benchmark import benchmark
-from llm import BedrockLLM
-from ocr import AWSRekognitionOCR
 from doc import FormDoc
+from groq import Groq
 
 
 def handler(event, context):
@@ -18,26 +17,57 @@ PIC_PATH = os.path.join(DIR, "../docs/dni.jpg")
 OPT_PATH = os.path.join(DIR, "../docs/optimalOutput.json")
 BENCH_PATH = os.path.join(DIR, "../docs/benchmark.xlsx")
 load_dotenv()
-
-aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-aws_region = os.getenv("AWS_REGION")
-
-if not aws_access_key_id or not aws_secret_access_key or not aws_region:
-    raise ValueError(
-        "please provide an AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION"
-    )
-
+api_key = os.getenv("GROQ_API_KEY")
+client = Groq(api_key)
 formDoc = FormDoc(FORM_PATH)
 
 fields_to_fill = formDoc.get_fields_to_fill()
 
-awsRekognitionOCR = AWSRekognitionOCR(
-    aws_access_key_id=aws_access_key_id,
-    aws_secret_access_key=aws_secret_access_key,
-    region_name=aws_region,
-)
-extracted_text = awsRekognitionOCR.process_image(PIC_PATH)
+
+extracted_text = """REINO DE ESPAÑA
+ES
+DOCUMENTO NACIONAL DE IDENTIDAD
+YA4000000
+99999999R
+DNI 99999999R
+APELLIDOS
+ESPAÑOLA
+ESPAÑOLA
+- TIMARI
+CARMEN
+SOY
+NACIONALIDAD
+NACIMENTO
+F
+ESP
+ESPECIMEN
+01 01 1980
+CRISION
+VALIDEZ
+02 06 2021 02 06 2031
+KUM SOPORTE
+020631
+CAA000000
+from حساء
+987654
+DOCUMENTO NACIONAL or IDENTIDAD / NATIONAL IDENTITY CARD
+DOMICILIO
+AVDA DE MADRID S-N
+MADRID
+OOOOOAAS
+MADRID
+DNI
+LUGAR DE NACIMIENTO
+MADRID
+MADRID
+EQUIPO
+HIJO/A DE
+28391A6DK
+JUAN / CARMEN
+IDESPCAA000000499999999R<<
+8001014F3106028ESP<<<<
+<
+ESPANOLA<ESPANOLA<<CARMEN<<"""
 
 prompt = f"""
     Dado el texto obtenido abajo, quiero que rellenes los siguientes campos {fields_to_fill}.
@@ -64,13 +94,18 @@ prompt = f"""
 """
 
 
-llm = BedrockLLM(
-    aws_access_key_id=aws_access_key_id,
-    aws_secret_access_key=aws_secret_access_key,
-    region_name=aws_region,
+chat_completion = client.chat.completions.create(
+        messages=[
+            {"role": "user", "content": [
+                {"type": "text", "text": prompt},
+            ]}
+        ],
+        model="meta-llama/llama-4-maverick-17b-128e-instruct",
+        temperature=0.6,
 )
+    
+json_response = chat_completion.choices[0].message.content
 
-json_response = llm.send_prompt(prompt)
 
 EditedFields = formDoc.set_fields_to_fill(json_response) #Como he visto que aqui tienes parte del processing del Json que te devuelve el LLM he pillado solo los cambios que se aplican a partir de la respuesta del llm
 
