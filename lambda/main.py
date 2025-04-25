@@ -1,5 +1,4 @@
 import os
-
 from dotenv import load_dotenv
 from benchmark import benchmark
 from doc import FormDoc
@@ -18,7 +17,7 @@ OPT_PATH = os.path.join(DIR, "../docs/optimalOutput.json")
 BENCH_PATH = os.path.join(DIR, "../docs/benchmark.xlsx")
 load_dotenv()
 api_key = os.getenv("GROQ_API_KEY")
-client = Groq(api_key)
+client = Groq(api_key=api_key)
 formDoc = FormDoc(FORM_PATH)
 
 fields_to_fill = formDoc.get_fields_to_fill()
@@ -92,24 +91,27 @@ prompt = f"""
     {extracted_text}
 
 """
-
-
+#model_name = "meta-llama/llama-4-scout-17b-16e-instruct"
+#model_name = "meta-llama/llama-4-maverick-17b-128e-instruct"
+model_name = "llama-3.3-70b-versatile"
+#model_name = "qwen-qwq-32b"
 chat_completion = client.chat.completions.create(
         messages=[
             {"role": "user", "content": [
                 {"type": "text", "text": prompt},
             ]}
         ],
-        model="meta-llama/llama-4-maverick-17b-128e-instruct",
+        model=model_name,
         temperature=0.6,
 )
     
 json_response = chat_completion.choices[0].message.content
 
+print(f"Response from LLM: {json_response}")
 
 EditedFields = formDoc.set_fields_to_fill(json_response) #Como he visto que aqui tienes parte del processing del Json que te devuelve el LLM he pillado solo los cambios que se aplican a partir de la respuesta del llm
 
-benchmark.optimal(fields_to_fill, EditedFields, OPT_PATH, BENCH_PATH)
+benchmark.optimal(EditedFields ,fields_to_fill, OPT_PATH, BENCH_PATH, model_name)
 
 
 # Create output directory if needed

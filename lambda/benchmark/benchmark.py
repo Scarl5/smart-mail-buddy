@@ -1,8 +1,10 @@
 import os
 import json
+from openpyxl import Workbook
+from openpyxl import load_workbook
 import xlsxwriter  # Ensure you have installed this library: pip install xlsxwriter
 
-def optimal(EditedFields, fields_to_fill, optimal_output_path, benchmark_path):   
+def optimal(EditedFields, fields_to_fill, optimal_output_path, benchmark_path, model_name):   
     # Load the optimal output for comparison
     with open(optimal_output_path, "r", encoding="utf-8") as f:
         optimal_output = json.load(f)
@@ -11,42 +13,62 @@ def optimal(EditedFields, fields_to_fill, optimal_output_path, benchmark_path):
     total_fields = len(fields_to_fill)
     correctly_filled = 0
     incorrectly_filled = 0
-    missed_fields = 0
+    blank_fields = 0  # Tracks correctly left blank fields
 
     # Compare EditedFields with optimalOutput
     for field_name in fields_to_fill:
         optimal_value = optimal_output.get(field_name, None)
         edited_value = EditedFields.get(field_name, None)
 
-        if edited_value == optimal_value:
+        if isinstance(edited_value, str) and isinstance(optimal_value, str):
+            if not edited_value.strip() and not optimal_value.strip():  # Correctly left blank
+                blank_fields += 1
+            elif edited_value.strip().lower() == optimal_value.strip().lower():
+                correctly_filled += 1
+            elif edited_value.strip():  # Field was filled but incorrectly
+                incorrectly_filled += 1
+            else:  # Field was left blank incorrectly
+                incorrectly_filled += 1
+        elif edited_value is None and optimal_value is None:  # Correctly left blank
+            blank_fields += 1
+        elif edited_value == optimal_value:
             correctly_filled += 1
-        elif edited_value is not None:
+        elif edited_value is not None:  # Field was filled but incorrectly
             incorrectly_filled += 1
-        else:
-            missed_fields += 1
+        else:  # Field was left blank incorrectly
+            incorrectly_filled += 1
 
     # Add fields filled incorrectly that were not in optimalOutput
     extra_fields = set(EditedFields.keys()) - set(optimal_output.keys())
     incorrectly_filled += len(extra_fields)
 
-    # Save benchmark results to an XLSX file
-    workbook = xlsxwriter.Workbook(benchmark_path)
-    worksheet = workbook.add_worksheet()
+    # Open or create the XLSX file
+    if os.path.exists(benchmark_path):
+        workbook = load_workbook(benchmark_path)
+        worksheet = workbook.active
+    else:
+        workbook = Workbook()
+        worksheet = workbook.active
+        # Write headers if creating a new file
+        worksheet.append(["Model", "Total Fields", "Correctly Filled", "Incorrectly Filled", "Blank Fields"])
 
-    # Write headers
-    worksheet.write(0, 0, "Model")
-    worksheet.write(0, 1, "Total Fields")
-    worksheet.write(0, 2, "Correctly Filled")
-    worksheet.write(0, 3, "Incorrectly Filled")
-    worksheet.write(0, 4, "Missed Fields")
+    # Check if the model already exists in the file
+    model_exists = False
+    for row in worksheet.iter_rows(min_row=2, max_col=1):  # Removed values_only=True
+        if row[0].value == model_name:  # Access the cell value
+            model_exists = True
+            row_index = row[0].row  # Access the row index from the cell object
+            worksheet.cell(row=row_index, column=2, value=total_fields)
+            worksheet.cell(row=row_index, column=3, value=correctly_filled)
+            worksheet.cell(row=row_index, column=4, value=incorrectly_filled)
+            worksheet.cell(row=row_index, column=5, value=blank_fields)
+            break
 
-    # Write data for the current model
-    worksheet.write(1, 0, "meta-llama/llama-4-maverick-17b-128e-instruct")  # Model name
-    worksheet.write(1, 1, total_fields)
-    worksheet.write(1, 2, correctly_filled)
-    worksheet.write(1, 3, incorrectly_filled)
-    worksheet.write(1, 4, missed_fields)
+    # If the model does not exist, append a new row
+    if not model_exists:
+        worksheet.append([model_name, total_fields, correctly_filled, incorrectly_filled, blank_fields])
 
-    workbook.close()
+    # Save the workbook
+    workbook.save(benchmark_path)
 
-    print(f"\nBenchmark results saved to:\n{os.path.abspath(benchmark_path)}")
+    print(f"\nBenchmark results updated in:\n{os.path.abspath(benchmark_path)}")

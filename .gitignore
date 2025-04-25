@@ -6,3 +6,5 @@ dist
 __pycache__
 lambda/import json.py
 lambda/main copy.py
+docs/consulta_de_fondos_filledTEST.pdf
+docs/benchmark.xlsx
