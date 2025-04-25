@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from benchmark import benchmark
+from llm import cleanresponses
 from doc import FormDoc
 from groq import Groq
 
@@ -8,13 +9,13 @@ from groq import Groq
 def handler(event, context):
     return {"statusCode": 200, "body": "success"}
 
-
+temp=0.6
 DIR = os.path.dirname(os.path.realpath(__file__))
 # FORM_PATH = os.path.join(DIR, "../docs/alta_autonomos.pdf")
 FORM_PATH = os.path.join(DIR, "../docs/consulta_de_fondos.pdf")
 PIC_PATH = os.path.join(DIR, "../docs/dni.jpg")
 OPT_PATH = os.path.join(DIR, "../docs/optimalOutput.json")
-BENCH_PATH = os.path.join(DIR, "../docs/benchmark.xlsx")
+BENCH_PATH = os.path.join(DIR, "../docs/benchmarkTemp"+str(temp)+".xlsx")
 load_dotenv()
 api_key = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=api_key)
@@ -91,9 +92,9 @@ prompt = f"""
     {extracted_text}
 
 """
+model_name = "meta-llama/llama-4-maverick-17b-128e-instruct"
 #model_name = "meta-llama/llama-4-scout-17b-16e-instruct"
-#model_name = "meta-llama/llama-4-maverick-17b-128e-instruct"
-model_name = "llama-3.3-70b-versatile"
+#model_name = "llama-3.3-70b-versatile"
 #model_name = "qwen-qwq-32b"
 chat_completion = client.chat.completions.create(
         messages=[
@@ -102,12 +103,15 @@ chat_completion = client.chat.completions.create(
             ]}
         ],
         model=model_name,
-        temperature=0.6,
+        temperature=temp,
 )
     
 json_response = chat_completion.choices[0].message.content
 
-print(f"Response from LLM: {json_response}")
+
+json_response = cleanresponses.get_clean_json_string(json_response)
+
+json_response = cleanresponses.parse_json(json_response)
 
 EditedFields = formDoc.set_fields_to_fill(json_response) #Como he visto que aqui tienes parte del processing del Json que te devuelve el LLM he pillado solo los cambios que se aplican a partir de la respuesta del llm
 

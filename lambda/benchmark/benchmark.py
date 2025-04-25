@@ -14,6 +14,7 @@ def optimal(EditedFields, fields_to_fill, optimal_output_path, benchmark_path, m
     correctly_filled = 0
     incorrectly_filled = 0
     blank_fields = 0  # Tracks correctly left blank fields
+    error_log = []  # List to store error messages
 
     # Compare EditedFields with optimalOutput
     for field_name in fields_to_fill:
@@ -27,20 +28,31 @@ def optimal(EditedFields, fields_to_fill, optimal_output_path, benchmark_path, m
                 correctly_filled += 1
             elif edited_value.strip():  # Field was filled but incorrectly
                 incorrectly_filled += 1
+                error_log.append(f"Field '{field_name}' filled incorrectly. Expected: '{optimal_value}', Got: '{edited_value}'")
             else:  # Field was left blank incorrectly
                 incorrectly_filled += 1
+                error_log.append(f"Field '{field_name}' left blank incorrectly. Expected: '{optimal_value}', Got: ''")
         elif edited_value is None and optimal_value is None:  # Correctly left blank
             blank_fields += 1
         elif edited_value == optimal_value:
             correctly_filled += 1
         elif edited_value is not None:  # Field was filled but incorrectly
             incorrectly_filled += 1
+            error_log.append(f"Field '{field_name}' filled incorrectly. Expected: '{optimal_value}', Got: '{edited_value}'")
         else:  # Field was left blank incorrectly
             incorrectly_filled += 1
+            error_log.append(f"Field '{field_name}' left blank incorrectly. Expected: '{optimal_value}', Got: ''")
 
     # Add fields filled incorrectly that were not in optimalOutput
     extra_fields = set(EditedFields.keys()) - set(optimal_output.keys())
-    incorrectly_filled += len(extra_fields)
+    for extra_field in extra_fields:
+        incorrectly_filled += 1
+        error_log.append(f"Extra field '{extra_field}' filled. Value: '{EditedFields[extra_field]}'")
+
+    # Write errors to log.txt
+    log_path = os.path.join(os.path.dirname(benchmark_path), "log.txt")
+    with open(log_path, "w", encoding="utf-8") as log_file:
+        log_file.write("\n".join(error_log))
 
     # Open or create the XLSX file
     if os.path.exists(benchmark_path):
